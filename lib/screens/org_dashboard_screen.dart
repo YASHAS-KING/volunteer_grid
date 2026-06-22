@@ -353,26 +353,38 @@ class _OrganizationDashboardScreenState extends State<OrganizationDashboardScree
                           imageUrl = _supabase.storage.from('avatars').getPublicUrl(path);
                         }
 
-                        await _supabase.from('events').insert({
+                        // Supabase schema cache reports events.tags does NOT exist.
+                        // Build payload explicitly to ensure we do not send any `tags` field.
+                        final payload = <String, dynamic>{
                           'org_id': uid,
                           'title': titleCtrl.text.trim(),
                           'date': dateStr,
                           'description': descCtrl.text.trim(),
                           'org_name': _profile?['full_name'] ?? '',
-                          'tags': selectedTags,
                           if (imageUrl != null) 'image_url': imageUrl,
                           if (pickedLocation != null) 'lat': pickedLocation!.latitude,
                           if (pickedLocation != null) 'lng': pickedLocation!.longitude,
                           if (pickedLocationLabel.isNotEmpty) 'location_name': pickedLocationLabel,
-                        });
+                        };
+
+                        // ignore: avoid_print
+                        print('POST EVENT PAYLOAD => $payload');
+
+                        await _supabase.from('events').insert(payload);
                         if (ctx.mounted) Navigator.pop(ctx);
                         await _load();
                       } catch (e) {
                         setModal(() => posting = false);
                         if (ctx.mounted) {
                           ScaffoldMessenger.of(ctx).showSnackBar(
-                            SnackBar(content: Text('Failed to post event: $e'), backgroundColor: Colors.red),
+                            SnackBar(
+                              content: Text('Failed to post event: ${e.toString()}'),
+                              backgroundColor: Colors.red,
+                            ),
                           );
+                          // Helpful for debugging PostgrestException details
+                          // ignore: avoid_print
+                          print('POST EVENT ERROR => $e');
                         }
                       }
                     },
