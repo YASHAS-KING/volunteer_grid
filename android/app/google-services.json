@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "403401633412",
+    "project_id": "crisis-sync-e0da3",
+    "storage_bucket": "crisis-sync-e0da3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:403401633412:android:c1e388f3fee0688e2b1cd1",
+        "android_client_info": {
+          "package_name": "com.example.volunteer_grid"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBZSKTOKzE33MyQM1E0-AHzPf_cDIzi4-c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
