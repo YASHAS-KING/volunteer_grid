@@ -320,7 +320,7 @@ class _OrgFeedScreenState extends State<OrgFeedScreen> {
                       : () async {
                           if (captionCtrl.text.trim().isEmpty &&
                               pickedImageBytes == null)
-                            return;
+                            {return;}
 
                           setModal(() => posting = true);
                           String? imageUrl;
