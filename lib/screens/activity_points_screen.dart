@@ -23,7 +23,7 @@ class _ActivityPointsScreenState extends State<ActivityPointsScreen> {
             style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.bold, fontSize: 24, color: Theme.of(context).colorScheme.primary)),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _supabase.from('activities').stream(primaryKey: ['id']).eq('user_id', _userId),
+        stream: _supabase.from('activities').stream(primaryKey: ['id']).eq('student_id', _userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

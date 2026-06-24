@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:io';
+import '../utils/upload_helper.dart';
 
 class SubmitActivityScreen extends StatefulWidget {
   const SubmitActivityScreen({super.key});
@@ -32,8 +34,7 @@ class _SubmitActivityScreenState extends State<SubmitActivityScreen> {
   ];
 
   Future<void> _pickFile(String fileType) async {
-    final result = await FilePicker.platform.pickFiles(
-      withData: true,
+    final result = await FilePicker.pickFiles(
       type: fileType == 'photo' ? FileType.image : FileType.custom,
       allowedExtensions: fileType != 'photo' ? ['pdf', 'doc', 'docx'] : null,
     );
@@ -46,11 +47,28 @@ class _SubmitActivityScreenState extends State<SubmitActivityScreen> {
     }
   }
 
+  // Future<String?> _uploadFile(PlatformFile? file, String folder) async {
+  //   if (file == null || file.bytes == null) return null;
+  //   final path =
+  //       '$folder/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+  //   await _supabase.storage
+  //       .from('bmsce_activities')
+  //       .uploadBinary(path, file.bytes!);
+  //   return _supabase.storage.from('bmsce_activities').getPublicUrl(path);
+  // }
+
   Future<String?> _uploadFile(PlatformFile? file, String folder) async {
-    if (file == null || file.bytes == null) return null;
-    final path = '$folder/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-    await _supabase.storage.from('bmsce_activities').uploadBinary(path, file.bytes!);
-    return _supabase.storage.from('bmsce_activities').getPublicUrl(path);
+    if (file == null) return null;
+
+    final path =
+        '$folder/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+
+    // Ensure your bucket is named EXACTLY 'bmsce_activities' in Supabase.
+    return await UploadHelper.uploadFile(
+      file: file,
+      bucketName: 'bmsce_activities',
+      folderPath: path,
+    );
   }
 
   Future<void> _submit() async {
@@ -69,7 +87,7 @@ class _SubmitActivityScreenState extends State<SubmitActivityScreen> {
       final certUrl = await _uploadFile(_certFile, 'certificates');
 
       await _supabase.from('activities').insert({
-        'user_id': _supabase.auth.currentUser!.id,
+        'student_id': _supabase.auth.currentUser!.id,
         'category': _selectedCategory,
         'activity_name': _nameController.text,
         'hours_spent': _hoursController.text,
@@ -83,7 +101,11 @@ class _SubmitActivityScreenState extends State<SubmitActivityScreen> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Activity submitted successfully!'), backgroundColor: Colors.green));
+          const SnackBar(
+            content: Text('Activity submitted successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) _showError('Error: $e');
@@ -92,8 +114,9 @@ class _SubmitActivityScreenState extends State<SubmitActivityScreen> {
     }
   }
 
-  void _showError(String msg) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+  void _showError(String msg) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
 
   @override
   Widget build(BuildContext context) {
@@ -104,29 +127,69 @@ class _SubmitActivityScreenState extends State<SubmitActivityScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Activity Category', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            const Text(
+              'Activity Category',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: _selectedCategory,
               decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none)),
-              items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              items: _categories
+                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  .toList(),
               onChanged: (v) => setState(() => _selectedCategory = v!),
             ),
             const SizedBox(height: 20),
-            _buildTextField('Activity Name', 'e.g., Blood Donation Camp', _nameController),
+            _buildTextField(
+              'Activity Name',
+              'e.g., Blood Donation Camp',
+              _nameController,
+            ),
             const SizedBox(height: 20),
-            _buildTextField('Hours / Days Spent', 'e.g., 20 hours', _hoursController),
+            _buildTextField(
+              'Hours / Days Spent',
+              'e.g., 20 hours',
+              _hoursController,
+            ),
             const SizedBox(height: 20),
-            _buildTextField('Points Claimed', 'e.g., 20', _pointsController, isNumber: true),
+            _buildTextField(
+              'Points Claimed',
+              'e.g., 20',
+              _pointsController,
+              isNumber: true,
+            ),
             const SizedBox(height: 32),
-            const Text('Required Documents', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const Text(
+              'Required Documents',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
             const SizedBox(height: 16),
-            _buildFileBox('1-Page Activity Report', Icons.description, _reportFile, () => _pickFile('report')),
-            _buildFileBox('Geotagged Photos', Icons.add_a_photo, _photoFile, () => _pickFile('photo')),
-            _buildFileBox('Official Certificate', Icons.verified, _certFile, () => _pickFile('cert')),
+            _buildFileBox(
+              '1-Page Activity Report',
+              Icons.description,
+              _reportFile,
+              () => _pickFile('report'),
+            ),
+            _buildFileBox(
+              'Geotagged Photos',
+              Icons.add_a_photo,
+              _photoFile,
+              () => _pickFile('photo'),
+            ),
+            _buildFileBox(
+              'Official Certificate',
+              Icons.verified,
+              _certFile,
+              () => _pickFile('cert'),
+            ),
             const SizedBox(height: 40),
             SizedBox(
               width: double.infinity,
@@ -134,12 +197,21 @@ class _SubmitActivityScreenState extends State<SubmitActivityScreen> {
               child: ElevatedButton(
                 onPressed: _isSubmitting ? null : _submit,
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
                 child: _isSubmitting
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Submit for Evaluation',
-                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    : const Text(
+                        'Submit for Evaluation',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -148,50 +220,92 @@ class _SubmitActivityScreenState extends State<SubmitActivityScreen> {
     );
   }
 
-  Widget _buildTextField(String label, String hint, TextEditingController controller, {bool isNumber = false}) {
+  Widget _buildTextField(
+    String label,
+    String hint,
+    TextEditingController controller, {
+    bool isNumber = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
           decoration: InputDecoration(
-              hintText: hint,
-              filled: true,
-              fillColor: Colors.grey[100],
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none)),
+            hintText: hint,
+            filled: true,
+            fillColor: Colors.grey[100],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildFileBox(String title, IconData icon, PlatformFile? file, VoidCallback onTap) {
+  Widget _buildFileBox(
+    String title,
+    IconData icon,
+    PlatformFile? file,
+    VoidCallback onTap,
+  ) {
     final uploaded = file != null;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          border: Border.all(color: uploaded ? Colors.green : Colors.grey.shade300, width: 2),
-          borderRadius: BorderRadius.circular(12)),
+        border: Border.all(
+          color: uploaded ? Colors.green : Colors.grey.shade300,
+          width: 2,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-                color: uploaded ? Colors.green.shade50 : Colors.deepPurple.shade50, shape: BoxShape.circle),
-            child: Icon(uploaded ? Icons.check : icon, color: uploaded ? Colors.green : Colors.deepPurple),
+              color: uploaded
+                  ? Colors.green.shade50
+                  : Colors.deepPurple.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              uploaded ? Icons.check : icon,
+              color: uploaded ? Colors.green : Colors.deepPurple,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(uploaded ? file.name : '*Required',
-                  style: TextStyle(color: uploaded ? Colors.green : Colors.red, fontSize: 11)),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  uploaded ? file.name : '*Required',
+                  style: TextStyle(
+                    color: uploaded ? Colors.green : Colors.red,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
           ),
-          OutlinedButton(onPressed: onTap, child: Text(uploaded ? 'Change' : 'Upload')),
+          OutlinedButton(
+            onPressed: onTap,
+            child: Text(uploaded ? 'Change' : 'Upload'),
+          ),
         ],
       ),
     );
